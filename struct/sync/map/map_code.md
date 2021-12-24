@@ -12,6 +12,9 @@
     Delete删除key对应的value,采用延迟删除的机制，首先到read查找是否存在key，若存在则执行entry.delete进行软删除，通过cas将entry.p置为nil，
     减少锁开销，若read找不到key切amended为true才会通过delete加锁硬删除。
 
+1. sync.Map的核心实现 - 两个map，一个用于写，另一个用于读，这样的设计思想可以类比`缓存与数据库`
+2. sync.Map的局限性 - 如果写远高于读，dirty->readOnly 这个类似于 `刷数据` 的频率就比较高，不如直接用 `mutex + map` 的组合
+3. sync.Map的设计思想 - 保证高频读的无锁结构、空间换时间
 
 参考文档：
 - [深入浅出 Go - sync.Map 源码分析](https://xie.infoq.cn/article/ebcb070ee7fd0e273ca53b64f)

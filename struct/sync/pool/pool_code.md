@@ -33,6 +33,10 @@
 ##    sync.Pool为每个P分配一个本地池，当执行Get或者Put操作的时候，会先将goroutine和某个P的子池关联，再对该子池进行操作。
 ##    每个P的子池分为私有对象和共享列表对象，私有对象只能被指定P访问，共享队列shared可以被任何P访问
 
+1. sync.Pool的核心作用 - 读源码，`缓存稍后会频繁使用的对象`+`减轻GC压力`
+2. sync.Pool的Put与Get - Put的顺序为`local private-> local shared`，Get的顺序为 `local private -> local shared -> remote shared`
+3. 思考sync.Pool应用的核心场景 - `高频使用且生命周期短的对象，且初始化始终一致`，如fmt
+4. 探索Go1.13引入`victim`的作用 - 了解`victim cache`的机制
 
 参考文档：
 - [golang Pool源码解析）](https://juejin.cn/post/6966018400430587935)
