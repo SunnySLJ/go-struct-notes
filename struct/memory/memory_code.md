@@ -16,6 +16,8 @@
     mcentral是内存分配器的中心缓存，与线程缓存不同，访问中心缓存中的内存管理单元需要使用互斥锁
     mheap 是内存分配的核心结构体，Go 语言程序会将其作为全局变量存储，而堆上初始化的所有对象都由该结构体统一管理，
           该结构体中包含两组非常重要的字段，其中一个是全局的中心缓存列表 central，另一个是管理堆区内存区域的 arenas 以及相关字段
+          mheap跟tcmalloc中的PageHeap相似，负责大内存的分配。当mcentral内存不够时，可以向mheap申请。那mheap没有内存资源呢？跟tcmalloc一样，向OS操作系统申请。
+          还有，大于32KB的内存，也是直接向mheap申请
 
     mcache会通过mcentral的cacheSpan方法获取新的内存管理单元。
         1.调用 runtime.mcentral.partialSwept 从清理过的、包含空闲空间的 runtime.spanSet 结构中查找可以使用的内存管理单元；
@@ -28,6 +30,16 @@
     如果 runtime.mcentral 通过上述两个阶段都没有找到可用的单元，它会调用 runtime.mcentral.grow 触发扩容从堆中申请新的内存
     无论通过哪种方法获取到了内存单元，该方法的最后都会更新内存单元的 allocBits 和 allocCache 等字段，让运行时在分配内存时能够快速找到空闲的对象。
     
+    Go 的内存分配器在分配对象时，根据对象的大小，分成三类：小对象（小于等于 16B）、一般对象（大于 16B，小于等于 32KB）、大对象（大于 32KB）。
+    大体上的分配流程：
+    1.32KB 的对象，直接从 mheap 上分配；
+    2.<=16B 的对象使用 mcache 的 tiny 分配器分配；
+    3.(16B,32KB] 的对象，首先计算对象的规格大小，然后使用 mcache 中相应规格大小的 mspan 分配；
+    4.如果 mcache 没有相应规格大小的 mspan，则向 mcentral 申请
+    5.如果 mcentral 没有相应规格大小的 mspan，则向 mheap 申请
+    6.如果 mheap 中也没有合适大小的 mspan，则向操作系统申请
+
+![图解](../../image/tcmalloc.png)
 
 ##逃逸分析
     原本变量定义在方法的栈内存中，你看起来这些变量放在栈上，go
@@ -118,10 +130,46 @@
     go的话就是有allocator和collector自动分配与自动回收，这种自动回收的就是垃圾回收技术
 
 ##总结
+    1.Go内存分配器借鉴了TCMalloc设计实现高速内存分配，核心理念是使用多级缓存将对象根据大小分类，并按照类别实施不同的分配策略
+    分配器使用的是空闲列表分配器中的隔离适应策略，将内存分割成多个链表，每个链表内存块相同，申请内存先找到满足条件的链表，
+    再从列表中选择合适的内存块。Go使用的事隔离适应策略的变种，分级匹配。将我们内存块分为很多不同层级，比如8B、16B。。。8K，可以减少分配产生的内存碎片。
+    2.go内存分配维护了一个多级机构mspan内存管理单元、mcache线程缓存、mcentral中心缓存、mheap页堆
+      mspan: 内存管理单元,运行时使用mSpanList存储双向列表的头节点和尾节点，并在mcache和mcentral中使用
+      mcache: 与P绑定，本地内存分配操作，不需要加锁，mcache的alloc包含了67个不含指针的noscan和包含指针的67个scan
+      mcentral: 中心分配缓存，分配时需要上锁，不同spanClass使用不同的锁。
+      mheap: 全局唯一，从OS申请内存，并修改其内存定义结构时，需要加锁，是一个全局锁。
+    3.内存分配mallocgc，堆上所有对象通过newobject函数分配，newobject会调用malloc分配制定大小对的内存空间，
+      mallocgc会根据对象大小执行不同分配逻辑，大对象直接在堆heap上分配
+    4.每一个mspan管理特定大小的对象，当用户程序或者线程向mspan申请内存时，
+      该结构会使用allocCache字段为对象在管理的内存中快速查找待分配的空间，
+      当内存中不包含内存空间，会去上一级mcache结构添加更多的内存页来分配，mcache的alloc中包含67个不含指针和包含指针的67个scan
+      当mcache中也没有内存空间，会去mcentral中申请，访问mcentral内存管理单元需要加上互斥锁，不同spanClass使用不同的锁。
+      当mcentral内存也不够时，会通关mcentral.grow从堆中申请新的mspan，mcentral维护了empry和noempty的链表，
+      当mcentral内存也不够了，则会加上互斥锁去mheap申请内存。Go中只会存在一个mheap，堆上初始化所有对象都由mheap统一管理。
+      mheap包含两组非常重要的字段，一个全局中心缓存列表mcentral，一个是管理堆区内存区域arenas以及相关字段。
+      当arenaa区域没有足够的空间，会调用mheap.sysAlloc从操作系统中申请更多的内存
+    5.Refill函数流程，refill方法会为线程获取一个指定跨度的内存管理单元，被替换的单元不能保函空闲的内存空间，而获取的单元需要至少包含一个空闲对象用于分配内存。
+      本地mcache没有空闲内存是触发，从mcentral里的non-empty链表中找(mcentral.cacheSpan),当内存等待回收，将其插入empty，尝试sweep清理mcentral的empty，
+      内存正在回收时跳过该内存单元，已经被回收时。将内存单元插入empty链表中。增长扩容mcentral尝试用mcentral.grow函数从arena获取内存,arena如果还是没有，
+      通过mheap.alloc向操作系统申请
+    6.mheap 中超过 128 个页的内存会在 freeLarge 中分配，freeLarge 是一个 treap 结构
 
+##逃逸分析总结
+    可以使用命令go build -gcflags="-m" 查看为什么会逃逸
+    逃逸分析实现原理，大致算法基于两个不变性:
+       a.指向栈对象的指针不能存储在堆上
+       b.指向栈对象的指针不能超过该对象的存活期。
+    逃逸分析源码解析，Go编译器解析了Go源文件后获得整个程序的抽象语法树AST，AST的切片xtop在main函数中被escapes函数调用。
+    escapes大致原理首先创建一个有向加权图，其中定点代表由语句和表达式分配的变量，而边代表变量之间的赋值，
+           接着遍历该有向加权图，在途中找出可能违反逃逸分析算法两个不变性的赋值路径，
+           如果一个变量v的地址是储存在堆或其他可能会超过他的存活期的地方，那么v就会被标记为需要在堆上分配。
 
 参考文档：
-- [面向信仰编程-内存分配器](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-memory-allocator/)
+-- [面向信仰编程-内存分配器](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-memory-allocator/)
+-- [字节跳动 Go 语言面试高频题 01：内存分配](https://zhuanlan.zhihu.com/p/352133292)
+-- [通过实例理解Go逃逸分析](https://tonybai.com/2021/05/24/understand-go-escape-analysis-by-example/)
+
+
 
 
 
