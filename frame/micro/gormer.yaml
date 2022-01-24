@@ -1,0 +1,34 @@
+# 数据库相关的信息
+database:
+  # 数据库连接
+  dsn: "root:yaok@123@tcp(127.0.0.1:3306)/notes?charset=utf8mb4&parseTime=True&loc=Local"
+  # 所有要生成到Go结构体中的表
+  tables:
+    # name-表名
+    # goStruct-Go中结构体名
+    # createTime-创建时间的数据库字段，必须为时间格式
+    # updateTime-更新时间的数据库字段，必须为时间格式
+    # softDeleteKey-软删除的数据库字段，必须为整数型，不填则为硬删除
+    # softDeleteValue-表示为软删除的对应值
+    - name: "orders"
+      goStruct: "Order"
+      createTime: "create_time"
+      updateTime: "update_time"
+      softDeleteKey: "delete_status"
+      softDeleteValue: 1
+
+# 项目相关的信息
+project:
+  # 项目的路径
+  base: "./"
+  # dao层CRUD核心结构的代码路径
+  dao: "internal/template/dao/"
+  # model层的抽象代码
+  model: "internal/template/model/"
+  # 项目的go module信息
+  go_mod: "go-micro"
+  # Log 定制部分，一般用于自定义的log打印模式
+  log:
+    mode: false
+    # log package
+    package: "log"

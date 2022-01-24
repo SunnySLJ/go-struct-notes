@@ -1,0 +1,8 @@
+2022-01-12T14:52:29.705+0800	info	micro/main.go:35	server is running
+2022-01-12T14:53:05.024+0800	info	micro/main.go:35	server is running
+2022-01-12T15:09:54.806+0800	info	micro/main.go:35	server is running
+2022-01-12T15:09:54.809+0800	fatal	micro/main.go:43	init mysql error Error 1049: Unknown database 'demo'
+2022-01-12T15:10:12.930+0800	info	micro/main.go:35	server is running
+2022-01-12T15:27:26.830+0800	info	micro/main.go:30	server is running
+2022-01-13T15:10:15.954+0800	info	micro/main.go:35	server is running
+2022-01-13T15:29:18.287+0800	info	micro/main.go:37	server is running

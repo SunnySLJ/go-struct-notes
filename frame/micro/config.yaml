@@ -1,0 +1,17 @@
+server:
+  http:
+    port: 8081
+  grpc:
+    port: 8082
+  prometheus:
+    port: 8083
+
+log:
+  path: "log/service.log"
+
+mysql:
+  user: "root"
+  password: "yaok@123"
+  ip: "127.0.0.1"
+  port: 3306
+  dbname: "notes"

@@ -1,0 +1,273 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "proto/order/order.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "OrderService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/orders": {
+      "get": {
+        "operationId": "OrderService_ListOrders",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/orderListOrdersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "OrderService"
+        ]
+      },
+      "post": {
+        "operationId": "OrderService_CreateOrder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/orderCreateOrderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/orderOrder"
+            }
+          }
+        ],
+        "tags": [
+          "OrderService"
+        ]
+      },
+      "patch": {
+        "operationId": "OrderService_UpdateOrder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/orderUpdateOrderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OrderService"
+        ]
+      }
+    },
+    "/v1/orders/{name}": {
+      "get": {
+        "operationId": "OrderService_GetOrder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/orderGetOrderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          }
+        ],
+        "tags": [
+          "OrderService"
+        ]
+      },
+      "delete": {
+        "operationId": "OrderService_DeleteOrder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          }
+        ],
+        "tags": [
+          "OrderService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "orderCreateOrderResponse": {
+      "type": "object",
+      "properties": {
+        "order": {
+          "$ref": "#/definitions/orderOrder"
+        }
+      }
+    },
+    "orderGetOrderResponse": {
+      "type": "object",
+      "properties": {
+        "order": {
+          "$ref": "#/definitions/orderOrder"
+        }
+      }
+    },
+    "orderListOrdersResponse": {
+      "type": "object",
+      "properties": {
+        "orders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/orderOrder"
+          }
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "orderOrder": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number",
+          "format": "float"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "orderUpdateOrderRequest": {
+      "type": "object",
+      "properties": {
+        "order": {
+          "$ref": "#/definitions/orderOrder"
+        },
+        "updateMask": {
+          "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}
